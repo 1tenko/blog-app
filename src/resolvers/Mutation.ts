@@ -1,24 +1,27 @@
-import { Post } from "@prisma/client";
+import { Post, Prisma } from "@prisma/client";
 import { Context } from "../index";
 
-interface PostCreateArgs {
-  title: string;
-  content: string;
+interface PostArgs {
+  post: {
+    title?: string;
+    content?: string;
+  };
 }
 
 interface PostPayloadType {
   userErrors: {
     message: string;
   }[];
-  post: Post | null;
+  post: Post | Prisma.Prisma__PostClient<Post> | null;
 }
 
 export const Mutation = {
   postCreate: async (
     _: any,
-    { title, content }: PostCreateArgs,
+    { post }: PostArgs,
     { prisma }: Context
   ): Promise<PostPayloadType> => {
+    const { title, content } = post;
     if (!title || !content) {
       return {
         userErrors: [
@@ -28,17 +31,69 @@ export const Mutation = {
       };
     }
 
-    const post = await prisma.post.create({
-      data: {
-        title,
-        content,
-        authorId: 1,
+    return {
+      userErrors: [],
+      post: prisma.post.create({
+        data: {
+          title,
+          content,
+          authorId: 1,
+        },
+      }),
+    };
+  },
+  postUpdate: async (
+    _: any,
+    { post, postId }: { postId: string; post: PostArgs["post"] },
+    { prisma }: Context
+  ): Promise<PostPayloadType> => {
+    const { title, content } = post;
+
+    if (!title && !content) {
+      return {
+        userErrors: [
+          {
+            message: "Needs to have at least one field to update",
+          },
+        ],
+        post: null,
+      };
+    }
+    const existingPost = await prisma.post.findUnique({
+      where: {
+        id: Number(postId),
       },
     });
 
+    if (!existingPost) {
+      return {
+        userErrors: [
+          {
+            message: "Post does not exist",
+          },
+        ],
+        post: null,
+      };
+    }
+
+    let payloadToUpdate = {
+      title,
+      content,
+    };
+
+    if (!title) delete payloadToUpdate.title;
+    if (!content) delete payloadToUpdate.content;
+
     return {
       userErrors: [],
-      post: post,
+      post: prisma.post.update({
+        data: {
+          ...payloadToUpdate,
+        },
+        where: {
+          id: Number(postId),
+        },
+      }),
     };
   },
 };
