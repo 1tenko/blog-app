@@ -37,6 +37,6 @@ model Profile {
   bio       String
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  userID    Int       @unique
+  userId    Int       @unique
   user      User      @relation(fields: [userID], references: [id])
 }
